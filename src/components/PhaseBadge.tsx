@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getPhase } from "@/lib/phases";
 import type { TaskPhase } from "@/lib/types";
 
-function timeAgo(from: number, now: number): string {
+export function timeAgo(from: number, now: number): string {
   const min = Math.floor(Math.max(0, now - from) / 60_000);
   if (min < 1) return "hace un momento";
   if (min < 60) return `hace ${min} min`;

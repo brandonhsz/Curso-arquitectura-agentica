@@ -1,9 +1,12 @@
 "use client";
 
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+
 import { groupByPhase } from "@/lib/board";
 import { BLOCK_NAMES } from "@/lib/phases";
 import type { BoardState, Phase, PhaseBlock, Task } from "@/lib/types";
 import { PhaseBadge } from "./PhaseBadge";
+import { PhaseDetailPanel, panelPosition, type PanelPosition } from "./PhaseDetailPanel";
 
 type Props = {
   board: BoardState;
@@ -17,6 +20,88 @@ const TURN_DOT = {
   agente: "bg-sky-500",
   ninguno: "bg-emerald-500",
 } as const;
+
+const HOVER_DELAY = 300;
+
+function PhaseCard({ task, onEdit }: { task: Task; onEdit: (task: Task) => void }) {
+  const ref = useRef<HTMLElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pos, setPos] = useState<{ position: PanelPosition; now: number } | null>(null);
+  const panelId = useId();
+  const hasDetail = Boolean(task.phase);
+
+  const cancel = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  const close = useCallback(() => {
+    cancel();
+    setPos(null);
+  }, []);
+  const show = () => {
+    cancel();
+    if (hasDetail && ref.current) setPos({ position: panelPosition(ref.current.getBoundingClientRect()), now: Date.now() });
+  };
+
+  // Al desplazar (también el que provoca el foco con teclado) el panel sigue a la tarjeta;
+  // solo se cierra si la tarjeta sale de la pantalla.
+  const open = pos !== null;
+  useEffect(() => {
+    if (!open) return;
+    const follow = () => {
+      const rect = ref.current?.getBoundingClientRect();
+      const offscreen =
+        !rect ||
+        rect.bottom < 0 ||
+        rect.right < 0 ||
+        rect.top > window.innerHeight ||
+        rect.left > window.innerWidth;
+      if (offscreen) close();
+      else setPos((p) => (p ? { ...p, position: panelPosition(rect) } : p));
+    };
+    window.addEventListener("scroll", follow, true);
+    window.addEventListener("resize", follow);
+    return () => {
+      window.removeEventListener("scroll", follow, true);
+      window.removeEventListener("resize", follow);
+    };
+  }, [open, close]);
+  useEffect(() => cancel, []);
+
+  return (
+    <article
+      ref={ref}
+      tabIndex={0}
+      role="button"
+      aria-describedby={pos ? panelId : undefined}
+      onClick={() => {
+        close();
+        onEdit(task);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") close();
+        else if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          close();
+          onEdit(task);
+        }
+      }}
+      onMouseEnter={() => {
+        if (!hasDetail) return;
+        cancel();
+        timer.current = setTimeout(show, HOVER_DELAY);
+      }}
+      onMouseLeave={close}
+      onFocus={show}
+      onBlur={close}
+      className="cursor-pointer rounded-lg bg-white p-2.5 shadow-sm transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:bg-zinc-800"
+    >
+      <p className="break-words text-sm font-medium text-zinc-900 dark:text-zinc-100">{task.title}</p>
+      {task.phase && <PhaseBadge phase={task.phase} showPhaseName={false} />}
+      {pos && <PhaseDetailPanel id={panelId} task={task} position={pos.position} now={pos.now} />}
+    </article>
+  );
+}
 
 function Column({ group, onEdit }: { group: Group; onEdit: (task: Task) => void }) {
   const { phase, tasks } = group;
@@ -57,14 +142,7 @@ function Column({ group, onEdit }: { group: Group; onEdit: (task: Task) => void 
 
       <div className="flex min-h-16 flex-col gap-2">
         {tasks.map((task) => (
-          <article
-            key={task.id}
-            onClick={() => onEdit(task)}
-            className="cursor-pointer rounded-lg bg-white p-2.5 shadow-sm transition-shadow hover:shadow-md dark:bg-zinc-800"
-          >
-            <p className="break-words text-sm font-medium text-zinc-900 dark:text-zinc-100">{task.title}</p>
-            {task.phase && <PhaseBadge phase={task.phase} showPhaseName={false} />}
-          </article>
+          <PhaseCard key={task.id} task={task} onEdit={onEdit} />
         ))}
         {tasks.length === 0 && (
           <p className="py-4 text-center text-xs text-zinc-400 dark:text-zinc-500">Sin tareas</p>

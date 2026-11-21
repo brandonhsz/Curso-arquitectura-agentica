@@ -50,7 +50,15 @@ export type Turn = "humano" | "agente" | "ninguno";
 
 export type PhaseBlock = 1 | 2 | 3 | 4 | 5;
 
-export type Phase = { id: PhaseId; name: string; order: number; turn: Turn; block: PhaseBlock };
+export type Phase = {
+  id: PhaseId;
+  name: string;
+  order: number;
+  turn: Turn;
+  block: PhaseBlock;
+  /** Una frase, en lenguaje llano, de qué ocurre en esta fase. */
+  description: string;
+};
 
 export type PhaseRegression = { from: PhaseId; to: PhaseId; reason: string; at: number };
 
