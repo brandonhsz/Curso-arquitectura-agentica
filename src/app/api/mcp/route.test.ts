@@ -158,6 +158,17 @@ describe("MCP listar_tareas", () => {
     expect(t1).toMatchObject({ fase: null, turno: null, responsable: null });
     expect(t2).toMatchObject({ fase: "Mesa de diálogo", turno: "agente", responsable: "Ana" });
   });
+
+  it("incluye el estado del agente automático (null si no tiene)", async () => {
+    mem.board.tasks[0] = {
+      ...mem.board.tasks[0],
+      agent: { status: "detenido", worktree: "/w", branch: "b", logFile: "/l", startedAt: 1 },
+    };
+    const r = await callTool("listar_tareas", {});
+    const tasks = JSON.parse(textOf(r)) as Record<string, unknown>[];
+    expect(tasks.find((t) => t.id === "t1")).toMatchObject({ agente: "detenido" });
+    expect(tasks.find((t) => t.id === "t2")).toMatchObject({ agente: null });
+  });
 });
 
 describe("MCP — flujo completo (11 fases, Bloques 1-5)", () => {

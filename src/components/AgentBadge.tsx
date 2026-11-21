@@ -72,6 +72,11 @@ export function AgentBadge({ task }: { task: Task }) {
       {status === "fallo" && agent.error && (
         <span className="break-words opacity-90">{agent.error}</span>
       )}
+      {orca && status === "detenido" && (
+        <span className="opacity-80">
+          El chat se detendrá al cambiar de fase; para cortarlo ya, ábrelo en Orca.
+        </span>
+      )}
       {orca && (
         <div className="flex items-center justify-between gap-1.5">
           <span className="min-w-0 truncate opacity-70" title={agent.worktree}>

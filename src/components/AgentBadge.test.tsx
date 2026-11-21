@@ -267,6 +267,17 @@ describe("AgentBadge con agente en Orca", () => {
     },
   );
 
+  it("detenido: avisa que el chat se detiene al cambiar de fase y que en Orca se corta ya", () => {
+    const { container } = render(<AgentBadge task={task({ agent: orcaAgent({ status: "detenido" }) })} />);
+    expect(container).toHaveTextContent(/se detendrá al cambiar de fase/i);
+    expect(container).toHaveTextContent(/ábrelo en Orca/i);
+  });
+
+  it("terminado: no muestra el aviso de detención", () => {
+    const { container } = render(<AgentBadge task={task({ agent: orcaAgent({ status: "terminado" }) })} />);
+    expect(container).not.toHaveTextContent(/se detendrá al cambiar de fase/i);
+  });
+
   it("trabajando: sigue mostrando 'Detener agente'", () => {
     render(<AgentBadge task={task({ agent: orcaAgent({ status: "trabajando" }) })} />);
     expect(screen.getByRole("button", { name: "Detener agente" })).toBeInTheDocument();

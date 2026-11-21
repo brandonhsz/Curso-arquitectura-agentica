@@ -22,6 +22,8 @@ function phaseFields(t: Task) {
     fase: phase?.name ?? null,
     turno: phase?.turn ?? null,
     responsable: t.phase ? t.phase.owner || null : null,
+    // Estado del agente automático: si dice "detenido", el agente debe parar (detención cooperativa).
+    agente: t.agent?.status ?? null,
   };
 }
 

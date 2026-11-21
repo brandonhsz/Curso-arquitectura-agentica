@@ -54,7 +54,7 @@ export function construirPrompt(task: Task, statusName: string, env: Env = proce
     "## Instrucciones",
     "1. Trabaja este ticket siguiendo el flujo completo de CLAUDE.md, en modo autónomo, de principio a fin.",
     `2. Esta tarjeta YA es el ticket: usa su id (${task.id}) en \`actualizar_fase\` del servidor MCP \`kanban\`. La primera vez (fase \`intent\`) usa \`responsable\` = "${responsable}". Usa siempre el id, nunca el título.`,
-    "3. Al entrar a cada fase, relee la tarjeta con `listar_tareas` por si alguien la editó. Si la tarjeta ya no existe, pasa a la fase `inactivo` del hook (`node .claude/hooks/flujo.mjs fase inactivo`) y termina.",
+    "3. Al entrar a cada fase, relee la tarjeta con `listar_tareas` por si alguien la editó. Si la tarjeta ya no existe, o su campo `agente` dice \"detenido\" (alguien te detuvo desde el tablero), pasa a la fase `inactivo` del hook (`node .claude/hooks/flujo.mjs fase inactivo`) y termina sin hacer nada más.",
     "4. Estás en un git worktree propio creado por Orca: corre `npm install` si falta `node_modules`.",
     `5. Para las evidencias levanta tu propia app en otro puerto (p. ej. \`PORT=3100 npm run dev\`) y usa \`EVIDENCIA_URL=http://localhost:3100\`. El tablero real está en ${url}: no lo reinicies ni lo detengas.`,
     "6. Esta sesión corre en Orca y la persona la ve: al llegar a la aprobación final mueve la tarjeta a `aprobacion_final` y pregunta con `AskUserQuestion` como dice CLAUDE.md; la persona responde aquí mismo.",
@@ -103,7 +103,7 @@ export function planLanzamiento(
       "--agent",
       "claude",
       "--surface",
-      "terminal",
+      "chat",
       "--comment",
       task.title,
       "--prompt",
@@ -180,7 +180,7 @@ function resolverDeps(deps?: Partial<AgenteDeps>): AgenteDeps {
 
 const mensaje = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-type OrcaWorktree = { id: string; path: string; branch: string; handle?: string };
+type OrcaWorktree = { id: string; path: string; branch: string; handle?: string; sessionId?: string };
 
 /** Interpreta la salida JSON de `orca worktree create --json`; lanza si no trae el worktree. */
 function leerSalidaOrca(stdout: string): OrcaWorktree {
@@ -195,7 +195,7 @@ function leerSalidaOrca(stdout: string): OrcaWorktree {
     error?: { message?: string };
     result?: {
       worktree?: { id?: unknown; path?: unknown; branch?: unknown };
-      launch?: { outcome?: { handle?: unknown } };
+      launch?: { outcome?: { handle?: unknown; sessionId?: unknown } };
     };
   };
   if (!r || r.ok !== true) {
@@ -206,11 +206,13 @@ function leerSalidaOrca(stdout: string): OrcaWorktree {
     throw new Error("Orca respondió sin el id del worktree");
   }
   const handle = r.result?.launch?.outcome?.handle;
+  const sessionId = r.result?.launch?.outcome?.sessionId;
   return {
     id: wt.id,
     path: typeof wt.path === "string" ? wt.path : "",
     branch: typeof wt.branch === "string" ? wt.branch.replace(/^refs\/heads\//, "") : "",
     handle: typeof handle === "string" ? handle : undefined,
+    sessionId: typeof sessionId === "string" ? sessionId : undefined,
   };
 }
 
@@ -247,6 +249,7 @@ export async function lanzarAgente(task: Task, statusName: string, deps?: Partia
       ...base,
       worktree: wt.path,
       branch: wt.branch,
+      ...(wt.sessionId ? { sessionId: wt.sessionId } : {}),
       orca: wt.handle ? { worktreeId: wt.id, handle: wt.handle } : { worktreeId: wt.id },
     };
     await guardar(agent);
@@ -264,8 +267,10 @@ export async function lanzarAgente(task: Task, statusName: string, deps?: Partia
 }
 
 /**
- * Marca la tarea como "detenido" y detiene su agente: en Orca cierra las terminales del
- * worktree; en agentes viejos lanzados como proceso, termina el proceso. Nunca lanza por eso.
+ * Marca la tarea como "detenido" y detiene su agente. En Orca la sesión es un chat que el CLI no
+ * puede cerrar: la detención es cooperativa (el agente ve `agente: "detenido"` en `listar_tareas`
+ * al cambiar de fase y termina); igual se intenta cerrar terminales por si Orca abrió una.
+ * En agentes viejos lanzados como proceso, termina el proceso. Nunca lanza por eso.
  */
 export async function detenerAgenteDeTarea(taskId: string, deps?: Partial<AgenteDeps>): Promise<BoardState> {
   const d = resolverDeps(deps);

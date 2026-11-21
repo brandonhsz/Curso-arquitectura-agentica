@@ -116,6 +116,12 @@ describe("construirPrompt", () => {
     expect(p).toContain("CLAUDE.md");
     expect(p).toContain("Brandon");
   });
+  it("pide detenerse si la tarjeta marca al agente como detenido (detención cooperativa)", () => {
+    const p = construirPrompt(makeTask(), "Por hacer", {});
+    expect(p).toMatch(/`agente`/);
+    expect(p).toContain("detenido");
+    expect(p).toContain("inactivo");
+  });
   it("usa 'Equipo' como responsable por defecto", () => {
     expect(construirPrompt(makeTask(), "Por hacer", {})).toContain("Equipo");
   });
@@ -159,7 +165,7 @@ describe("planLanzamiento", () => {
     expect(a[a.indexOf("--name") + 1]).toBe(`ticket-${ID8}`);
     expect(a[a.indexOf("--base-branch") + 1]).toBe("flujo/base");
     expect(a[a.indexOf("--agent") + 1]).toBe("claude");
-    expect(a[a.indexOf("--surface") + 1]).toBe("terminal");
+    expect(a[a.indexOf("--surface") + 1]).toBe("chat");
     expect(a[a.indexOf("--comment") + 1]).toBe(task.title);
     expect(a[a.indexOf("--prompt") + 1]).toBe("PROMPT");
     expect(a).toContain("--no-parent");
@@ -220,7 +226,7 @@ const ORCA_OK = JSON.stringify({
   ok: true,
   result: {
     worktree: { id: ORCA_WT_ID, path: ORCA_WT_PATH, branch: `refs/heads/brandonhsz/ticket-${ID8}` },
-    launch: { outcome: { kind: "terminal", handle: "term-1" } },
+    launch: { outcome: { kind: "structured", sessionId: "claude_s1", handle: "term-1" } },
   },
 });
 
@@ -305,6 +311,8 @@ describe("lanzarAgente (Orca)", () => {
     });
     expect(path.resolve(agent.logFile)).toBe(path.join(REPO, "data", "agentes", `${ID}.log`));
     expect(agent.pid).toBeUndefined();
+    // En modo chat Orca devuelve el id de la sesión: se guarda para ubicarla.
+    expect(agent.sessionId).toBe("claude_s1");
     expect(taskIn(f.mem.board).agent).toMatchObject({
       status: "trabajando",
       orca: { worktreeId: ORCA_WT_ID, handle: "term-1" },
