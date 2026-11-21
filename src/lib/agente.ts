@@ -100,6 +100,8 @@ export function planLanzamiento(
       "bypassPermissions",
       "--mcp-config",
       mcpConfigFile,
+      // Solo el MCP del tablero: el agente corre sin confirmaciones y nada debe salir de la máquina.
+      "--strict-mcp-config",
       "--output-format",
       "stream-json",
       "--verbose",

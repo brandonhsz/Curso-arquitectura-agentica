@@ -116,6 +116,8 @@ describe("planLanzamiento", () => {
     expect(a[a.indexOf("--session-id") + 1]).toBe("s-1");
     expect(a[a.indexOf("--permission-mode") + 1]).toBe("bypassPermissions");
     expect(a[a.indexOf("--mcp-config") + 1]).toBe(plan.mcpConfigFile);
+    // Solo el MCP del tablero: con bypassPermissions no debe poder escribir en Slack, Gmail, etc.
+    expect(a).toContain("--strict-mcp-config");
   });
   it("usa KANBAN_AGENTE_CMD si viene", () => {
     const plan = planLanzamiento(makeTask(), "P", {
