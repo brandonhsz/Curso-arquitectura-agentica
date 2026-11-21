@@ -20,7 +20,7 @@ Todo el flujo corre **solo, de principio a fin**. El usuario da el pedido (o el 
 ### Límites del modo autónomo
 
 - Máximo **3 rondas** de mesa de diálogo y **1 vuelta** de regreso al Bloque 1 desde bloques posteriores. Al llegar al límite, se sigue con la mejor versión disponible y se registra.
-- Nada sale de la máquina sin la aprobación final: sin `git push`, sin PRs, sin mensajes a servicios externos y sin borrar datos que no creó el propio recorrido.
+- Nada sale de la máquina sin la aprobación final: sin `git push`, sin PRs, sin mensajes a servicios externos y sin borrar datos que no creó el propio recorrido. La única excepción es el PR del recorrido, que se crea **después** de un "Apruebo" (ver *Aprobación final*).
 
 ---
 
@@ -132,7 +132,7 @@ Cada recorrido del grafo vive en una tarjeta del tablero kanban, para que el equ
 | Bloque 5 — al grabar y entregar el video final | `evidencia_final` | agente |
 | Aprobación final (también si el recorrido se atascó) | `aprobacion_final` | **humano**: el único turno humano |
 
-- Al aprobar, mueve la tarjeta a la columna **Hecho** del tablero (`mover_tarea`). Al rechazar, regresa a la fase que corresponda con el motivo del rechazo como `motivo`.
+- Al aprobar, y una vez creado el PR, mueve la tarjeta a la columna **Hecho** del tablero (`mover_tarea`). Al rechazar, regresa a la fase que corresponda con el motivo del rechazo como `motivo`.
 - Las fases del tablero viven en `src/lib/phases.ts` y las del hook en `.claude/hooks/flujo.mjs`. `src/lib/phases.test.ts` falla si una fase del tablero no existe en el hook. `terminado` e `inactivo` existen solo en el hook, porque son estados de control y no fases de la tarjeta.
 
 - **Al retroceder** el `motivo` es obligatorio: escribe en una frase por qué. Ese motivo es el feedback que el equipo ve en la tarjeta.
@@ -505,9 +505,17 @@ Es el **único** punto donde se le pregunta algo al usuario. Se llega aquí desp
 **Decisiones tomadas por mí:** (de .flujo/decisiones.md, las relevantes)
 **Pendientes / riesgos:** hallazgos sin resolver, bloqueos, supuestos.
 **Archivos cambiados:** lista breve.
+**Al aprobar:** se sube la rama `<rama>` y se crea el PR contra `main` (o se actualiza el que ya existe).
 ```
 
-3. Pregunta con `AskUserQuestion`, **una sola pregunta**: "¿Apruebas el cambio?" con las opciones **Apruebo** / **No apruebo** (el usuario explica por qué en "Other" o en las notas).
+3. Pregunta con `AskUserQuestion`, **una sola pregunta**: "¿Apruebas el cambio? Al aprobar se sube la rama y se crea el PR." con las opciones **Apruebo** / **No apruebo** (el usuario explica por qué en "Other" o en las notas).
 4. Según la respuesta:
-   - **Apruebo** → crea la rama `flujo/<slug>` (si estás en `main`), haz commit de los cambios del recorrido y pasa a `terminado`. Push y PR solo si el usuario los pide.
+   - **Apruebo** → crea el PR del recorrido (paso 5) y pasa a `terminado`.
    - **No apruebo** → su motivo es el nuevo insumo. Regístralo y decide a qué bloque regresar: idea → Bloque 1, plan o implementación → Bloque 2, algo que se ve mal → Bloque 4. Actualiza la fase con el `motivo` en el tablero y **vuelve al modo autónomo** hasta una nueva aprobación final.
+5. **Crear el PR** (solo después de "Apruebo"):
+   1. **Rama:** usa la rama actual del worktree; si estás en `main`, crea `flujo/<slug>`.
+   2. **Commit** de los cambios del recorrido (sin `.flujo/` ni `evidencia/salidas|historial|entregables`, que están ignoradas).
+   3. **Push:** `git push -u origin <rama>`.
+   4. **PR:** si la rama ya tiene uno (`gh pr view --json url`), reutilízalo: el push ya lo actualizó y no se crea otro. Si no, `gh pr create --base main --title "<título del ticket o el Intent>" --body "<resumen de la aprobación final>"`. El cuerpo lleva el `Intent`, qué se hizo, las pruebas, las decisiones relevantes, los pendientes y, si viene de un ticket, `Ticket: <id>`.
+   5. **Entrega:** da el enlace del PR en la conversación y registra la URL en `.flujo/decisiones.md`. Después mueve la tarjeta a **Hecho** (`mover_tarea`).
+   6. **Si algo falla** (no hay `gh`, no hay sesión, no hay remoto o hay un conflicto con el push): el commit queda local, muestra el error real, registra el pendiente en `.flujo/decisiones.md` y **no** muevas la tarjeta a Hecho. No reintentes con `--force`.

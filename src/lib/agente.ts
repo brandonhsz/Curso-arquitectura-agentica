@@ -58,7 +58,7 @@ export function construirPrompt(task: Task, statusName: string, env: Env = proce
     "4. Estás en un git worktree propio creado por Orca: corre `npm install` si falta `node_modules`.",
     `5. Para las evidencias levanta tu propia app en otro puerto (p. ej. \`PORT=3100 npm run dev\`) y usa \`EVIDENCIA_URL=http://localhost:3100\`. El tablero real está en ${url}: no lo reinicies ni lo detengas.`,
     "6. Esta sesión corre en Orca y la persona la ve: al llegar a la aprobación final mueve la tarjeta a `aprobacion_final` y pregunta con `AskUserQuestion` como dice CLAUDE.md; la persona responde aquí mismo.",
-    "7. Nada sale de la máquina: sin `git push` y sin PRs.",
+    "7. Nada sale de la máquina antes de la aprobación final: sin `git push` y sin PRs hasta entonces. Si la persona responde \"Apruebo\", haz commit, sube la rama y crea el PR del ticket contra `main` con `gh pr create` (o reutiliza el que ya tenga la rama), como dice CLAUDE.md, y da el enlace del PR.",
   ].join("\n");
 }
 

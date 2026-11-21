@@ -135,6 +135,13 @@ describe("construirPrompt", () => {
     expect(p).not.toContain("SIN usar AskUserQuestion");
     expect(p).not.toContain("claude --resume");
   });
+  it("al aprobar crea el PR del ticket; antes de la aprobación no hay push ni PR", () => {
+    const p = construirPrompt(makeTask(), "Por hacer", {});
+    expect(p).toContain("gh pr create");
+    expect(p).toMatch(/Apruebo/);
+    expect(p).toMatch(/antes de la aprobación final/i);
+    expect(p).not.toContain("sin `git push` y sin PRs.");
+  });
 });
 
 describe("orcaCmd", () => {
