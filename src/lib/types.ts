@@ -82,3 +82,14 @@ export const STATUS_COLORS = [
   "#ec4899", // rosa
   "#14b8a6", // turquesa
 ];
+
+/** Una fila del archivo de Excel exportado (una por tarea), con los nombres que ve el usuario. */
+export type ExportRow = {
+  titulo: string;
+  descripcion: string;
+  estado: string;
+  fase: string;
+  responsable: string;
+  /** Fecha de creación en milisegundos (epoch). */
+  creada: number;
+};

@@ -6,6 +6,7 @@ import { tasksAwaitingHuman } from "@/lib/board";
 import { useBoard } from "@/lib/store";
 import type { Task } from "@/lib/types";
 import { Board } from "./Board";
+import { ExportButton } from "./ExportButton";
 import { PhaseBoard } from "./PhaseBoard";
 import { StatusManager } from "./StatusManager";
 import { TaskForm } from "./TaskForm";
@@ -63,6 +64,7 @@ export function KanbanApp() {
           ))}
         </div>
 
+        <ExportButton board={board} />
         <Link href="/webhooks" className="btn">
           Webhooks
         </Link>

@@ -97,3 +97,11 @@ describe("KanbanApp: pestaña 'Por fases'", () => {
     expect(within(dialog).getByLabelText("Título")).toHaveValue("Tarea a");
   });
 });
+
+describe("KanbanApp: exportar a Excel", () => {
+  it("muestra el botón 'Exportar a Excel' en la cabecera", () => {
+    vi.mocked(useBoard).mockReturnValue(boardWith([task("a")]));
+    render(<KanbanApp />);
+    expect(screen.getByRole("button", { name: "Exportar a Excel" })).toBeInTheDocument();
+  });
+});
