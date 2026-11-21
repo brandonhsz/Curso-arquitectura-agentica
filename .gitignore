@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# datos del tablero (persistencia local)
+/data
+
+# evidencias del Bloque 3 (capturas y videos generados)
+/evidencia/salidas
+/evidencia/historial
+/evidencia/entregables
+
+# estado del modo autónomo (hooks de .claude/)
+/.flujo
+/.claude/worktrees

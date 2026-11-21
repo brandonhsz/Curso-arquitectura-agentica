@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { actions } from "@/lib/store";
-import type { Status, Task } from "@/lib/types";
+import { useId, useState } from "react";
+import { PHASE_ERROR_MESSAGES, validatePhaseChange } from "@/lib/board";
+import { getPhase, PHASES } from "@/lib/phases";
+import { actions, useBoard } from "@/lib/store";
+import type { BoardState, PhaseChangeError, Status, Task } from "@/lib/types";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -19,13 +21,48 @@ export function TaskForm({ statuses, task, defaultStatusId, onClose }: Props) {
   const [statusId, setStatusId] = useState(
     task?.statusId ?? defaultStatusId ?? statuses[0]?.id ?? "",
   );
+  const board = useBoard();
+  const currentPhaseId = task?.phase?.phaseId ?? "";
+  const currentOwner = task?.phase?.owner ?? "";
+  const [phaseId, setPhaseId] = useState<string>(currentPhaseId);
+  const [owner, setOwner] = useState(currentOwner);
+  const [reason, setReason] = useState("");
+  const [phaseError, setPhaseError] = useState<PhaseChangeError | null>(null);
+  const phaseFieldId = useId();
+  const ownerFieldId = useId();
+  const reasonFieldId = useId();
+
+  const currentOrder = getPhase(currentPhaseId)?.order;
+  const selectedOrder = getPhase(phaseId)?.order;
+  const isRegression =
+    currentOrder !== undefined && selectedOrder !== undefined && selectedOrder < currentOrder;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = title.trim();
     if (!trimmed || !statusId) return;
     if (task) {
+      const clearPhase = !phaseId && !!task.phase;
+      const changePhase = !!phaseId && (phaseId !== currentPhaseId || owner.trim() !== currentOwner);
+      const input = {
+        phaseId,
+        owner: owner.trim(),
+        reason: isRegression ? reason.trim() : undefined,
+      };
+      if (changePhase) {
+        // Validar antes de guardar nada, para no dejar la tarea a medias.
+        const state: BoardState =
+          board && board.tasks.some((t) => t.id === task.id) ? board : { statuses, tasks: [task] };
+        const error = validatePhaseChange(state, task.id, input);
+        if (error) {
+          setPhaseError(error);
+          return;
+        }
+      }
+      setPhaseError(null);
       actions.updateTask(task.id, { title: trimmed, description: description.trim(), statusId });
+      if (changePhase) actions.setTaskPhase(task.id, input);
+      else if (clearPhase) actions.clearTaskPhase(task.id);
     } else {
       actions.addTask({ title: trimmed, description: description.trim(), statusId });
     }
@@ -70,6 +107,62 @@ export function TaskForm({ statuses, task, defaultStatusId, onClose }: Props) {
             ))}
           </select>
         </label>
+        {task && (
+          <>
+            <div className="flex flex-col gap-1 text-sm">
+              <label htmlFor={phaseFieldId}>Fase</label>
+              <select
+                id={phaseFieldId}
+                value={phaseId}
+                onChange={(e) => {
+                  setPhaseId(e.target.value);
+                  setPhaseError(null);
+                }}
+                className="input"
+              >
+                <option value="">Sin fase</option>
+                {PHASES.map((ph) => (
+                  <option key={ph.id} value={ph.id}>
+                    {ph.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1 text-sm">
+              <label htmlFor={ownerFieldId}>Responsable</label>
+              <input
+                id={ownerFieldId}
+                value={owner}
+                onChange={(e) => {
+                  setOwner(e.target.value);
+                  setPhaseError(null);
+                }}
+                className="input"
+                placeholder="¿A quién le toca?"
+              />
+            </div>
+            {isRegression && (
+              <div className="flex flex-col gap-1 text-sm">
+                <label htmlFor={reasonFieldId}>Motivo del retroceso</label>
+                <input
+                  id={reasonFieldId}
+                  value={reason}
+                  onChange={(e) => {
+                    setReason(e.target.value);
+                    setPhaseError(null);
+                  }}
+                  className="input"
+                  placeholder="¿Por qué regresa a una fase anterior?"
+                />
+              </div>
+            )}
+            {phaseError && (
+              <p role="alert" className="text-sm text-red-600">
+                {PHASE_ERROR_MESSAGES[phaseError]}
+              </p>
+            )}
+          </>
+        )}
         <div className="mt-2 flex justify-end gap-2">
           {task && (
             <button
