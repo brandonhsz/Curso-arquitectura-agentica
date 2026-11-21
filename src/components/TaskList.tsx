@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { actions } from "@/lib/store";
 import type { BoardState, Task } from "@/lib/types";
+import { AgentBadge } from "./AgentBadge";
+import { PhaseBadge } from "./PhaseBadge";
 import { StatusBadge } from "./StatusBadge";
 
 type Props = {
@@ -45,10 +47,14 @@ export function TaskList({ board, onEdit }: Props) {
         <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
           {tasks.map((task) => (
             <li key={task.id} className="flex items-center gap-3 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-900">
-              <button onClick={() => onEdit(task)} className="min-w-0 flex-1 text-left">
-                <p className="truncate text-sm font-medium">{task.title}</p>
-                {task.description && <p className="truncate text-xs text-zinc-500">{task.description}</p>}
-              </button>
+              <div className="min-w-0 flex-1">
+                <button onClick={() => onEdit(task)} className="w-full text-left">
+                  <p className="truncate text-sm font-medium">{task.title}</p>
+                  {task.description && <p className="truncate text-xs text-zinc-500">{task.description}</p>}
+                </button>
+                {task.phase && <PhaseBadge phase={task.phase} />}
+                <AgentBadge task={task} />
+              </div>
               <StatusBadge status={statusById.get(task.statusId)} />
               <select
                 value={task.statusId}

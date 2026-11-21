@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { actions } from "@/lib/store";
 import type { BoardState, Task } from "@/lib/types";
+import { AgentBadge } from "./AgentBadge";
+import { PhaseBadge } from "./PhaseBadge";
 
 type Props = {
   board: BoardState;
@@ -65,6 +67,8 @@ export function Board({ board, onEdit, onCreate }: Props) {
                   {task.description && (
                     <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{task.description}</p>
                   )}
+                  {task.phase && <PhaseBadge phase={task.phase} />}
+                  <AgentBadge task={task} />
                 </article>
               ))}
               {tasks.length === 0 && (
