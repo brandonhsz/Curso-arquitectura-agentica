@@ -9,6 +9,7 @@ const agente = vi.hoisted(() => ({
   debeLanzarAgente: vi.fn(() => true),
   lanzarAgente: vi.fn(async () => ({}) as unknown),
   detenerAgenteDeTarea: vi.fn(async () => ({ statuses: [], tasks: [] }) as unknown),
+  abrirAgenteEnOrca: vi.fn(async () => true as boolean),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -24,6 +25,7 @@ vi.mock("@/lib/agente", async (importOriginal) => ({
   debeLanzarAgente: agente.debeLanzarAgente,
   lanzarAgente: agente.lanzarAgente,
   detenerAgenteDeTarea: agente.detenerAgenteDeTarea,
+  abrirAgenteEnOrca: agente.abrirAgenteEnOrca,
 }));
 
 vi.mock("next/server", async (importOriginal) => ({
@@ -91,5 +93,26 @@ describe("server action detenerAgente", () => {
     const result = await detenerAgente!("t-1");
     expect(agente.detenerAgenteDeTarea).toHaveBeenCalledWith("t-1");
     expect(result).toBe(tablero);
+  });
+});
+
+describe("server action abrirEnOrca", () => {
+  it("delega en abrirAgenteEnOrca y devuelve true", async () => {
+    agente.abrirAgenteEnOrca.mockReset().mockResolvedValue(true);
+    const actions = (await import("./actions")) as unknown as Record<string, unknown>;
+    const abrirEnOrca = actions.abrirEnOrca as ((id: string) => Promise<boolean>) | undefined;
+    expect(typeof abrirEnOrca).toBe("function");
+    const result = await abrirEnOrca!("t-1");
+    expect(agente.abrirAgenteEnOrca).toHaveBeenCalledWith("t-1");
+    expect(result).toBe(true);
+  });
+
+  it("devuelve false cuando abrirAgenteEnOrca devuelve false", async () => {
+    agente.abrirAgenteEnOrca.mockReset().mockResolvedValue(false);
+    const actions = (await import("./actions")) as unknown as Record<string, unknown>;
+    const abrirEnOrca = actions.abrirEnOrca as ((id: string) => Promise<boolean>) | undefined;
+    expect(typeof abrirEnOrca).toBe("function");
+    await expect(abrirEnOrca!("t-2")).resolves.toBe(false);
+    expect(agente.abrirAgenteEnOrca).toHaveBeenCalledWith("t-2");
   });
 });

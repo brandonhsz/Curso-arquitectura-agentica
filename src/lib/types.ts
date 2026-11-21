@@ -19,8 +19,10 @@ export type AgentStatus = "trabajando" | "terminado" | "fallo" | "detenido";
 
 export type TaskAgent = {
   status: AgentStatus;
-  /** Id de la sesión de Claude Code; sirve para retomarla con `claude --resume`. */
-  sessionId: string;
+  /** Id de la sesión de Claude Code (solo en lanzamientos `claude -p`; en Orca la sesión vive en Orca). */
+  sessionId?: string;
+  /** Workspace de Orca donde trabaja el agente (lanzamiento por Orca). */
+  orca?: { worktreeId: string; handle?: string };
   /** Carpeta (git worktree) donde trabaja el agente. */
   worktree: string;
   branch: string;

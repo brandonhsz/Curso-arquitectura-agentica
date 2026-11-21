@@ -1,7 +1,7 @@
 "use server";
 
 import { after } from "next/server";
-import { debeLanzarAgente, detenerAgenteDeTarea, lanzarAgente } from "@/lib/agente";
+import { abrirAgenteEnOrca, debeLanzarAgente, detenerAgenteDeTarea, lanzarAgente } from "@/lib/agente";
 import { isBoardState, ops, validatePhaseChange } from "@/lib/board";
 import { mutateBoard, readBoard } from "@/lib/db";
 import type { BoardState, PhaseInput, Status, Task } from "@/lib/types";
@@ -40,6 +40,11 @@ export async function addTask(task: Task) {
 /** Detiene el agente automático de una tarea y la marca como "detenido". */
 export async function detenerAgente(taskId: string) {
   return detenerAgenteDeTarea(taskId);
+}
+
+/** Activa en Orca el worktree donde trabaja el agente de la tarea. `false` si no hay o falla. */
+export async function abrirEnOrca(taskId: string) {
+  return abrirAgenteEnOrca(taskId);
 }
 
 export async function updateTask(id: string, changes: Partial<Omit<Task, "id" | "createdAt">>) {

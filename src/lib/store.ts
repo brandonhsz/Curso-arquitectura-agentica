@@ -130,6 +130,10 @@ export const actions = {
       () => server.detenerAgente(taskId),
     );
   },
+  /** Abre en Orca el worktree del agente de la tarea (sin cambio en el tablero; ignora errores). */
+  openInOrca(taskId: string) {
+    void server.abrirEnOrca(taskId).catch(() => false);
+  },
 };
 
 /** Devuelve `null` mientras se carga el tablero desde el servidor. */

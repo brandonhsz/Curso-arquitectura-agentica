@@ -16,6 +16,12 @@
  * - Clic en "Detener agente" llama `actions.stopAgent(task.id)` (store del cliente) y NO
  *   propaga el clic (en Board el clic en la tarjeta abre la edición con `onEdit`).
  * - En Board y TaskList, una tarea con `agent` muestra el AgentBadge; una sin `agent` no.
+ *
+ * Agentes en Orca (`agent.orca` existe):
+ * - En lugar del comando `claude --resume`, muestra "En Orca: <basename de agent.worktree>" y un
+ *   botón "Abrir en Orca" que llama `actions.openInOrca(task.id)` sin propagar el clic.
+ * - No hay `<code>` ni botón "Copiar comando".
+ * - "Detener agente" sigue igual cuando está trabajando.
  */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -33,11 +39,13 @@ vi.mock("@/lib/store", () => ({
     setTaskPhase: vi.fn(),
     clearTaskPhase: vi.fn(),
     stopAgent: vi.fn(),
+    openInOrca: vi.fn(),
   },
   useBoard: vi.fn(),
 }));
 
 const stopAgent = (actions as unknown as { stopAgent: ReturnType<typeof vi.fn> }).stopAgent;
+const openInOrca = (actions as unknown as { openInOrca: ReturnType<typeof vi.fn> }).openInOrca;
 
 const WORKTREE = "/repo/.worktrees/t1-agente";
 const SESSION = "sess-123";
@@ -215,6 +223,88 @@ describe("AgentBadge", () => {
       expect(writeText).toHaveBeenCalledWith(RESUME);
       expect(await screen.findByText("Copiado")).toBeInTheDocument();
     });
+  });
+});
+
+const ORCA_WORKTREE = "/p/ticket-abcdef12";
+
+function orcaAgent(over: Partial<TaskAgent> = {}): TaskAgent {
+  return {
+    status: "trabajando",
+    orca: { worktreeId: `repo::${ORCA_WORKTREE}`, handle: "term-1" },
+    worktree: ORCA_WORKTREE,
+    branch: "brandonhsz/ticket-abcdef12",
+    logFile: "/repo/data/agentes/t1.log",
+    startedAt: 1_700_000_000_000,
+    ...over,
+  };
+}
+
+describe("AgentBadge con agente en Orca", () => {
+  it.each(["trabajando", "terminado", "fallo", "detenido"] as AgentStatus[])(
+    "%s: muestra 'En Orca: ticket-abcdef12' y el botón 'Abrir en Orca'",
+    (status) => {
+      const { container } = render(<AgentBadge task={task({ agent: orcaAgent({ status }) })} />);
+      expect(container).toHaveTextContent("En Orca: ticket-abcdef12");
+      expect(screen.getByRole("button", { name: "Abrir en Orca" })).toBeInTheDocument();
+    },
+  );
+
+  it.each(["trabajando", "terminado", "detenido"] as AgentStatus[])(
+    "%s: no muestra <code>, 'claude --resume' ni 'Copiar comando'",
+    (status) => {
+      const { container } = render(
+        <AgentBadge
+          task={task({
+            agent: orcaAgent({ status }),
+            phase: { phaseId: "aprobacion_final", owner: "Ana", updatedAt: Date.now() },
+          })}
+        />,
+      );
+      expect(container.querySelector("code")).toBeNull();
+      expect(container).not.toHaveTextContent("claude --resume");
+      expect(screen.queryByRole("button", { name: "Copiar comando" })).toBeNull();
+    },
+  );
+
+  it("trabajando: sigue mostrando 'Detener agente'", () => {
+    render(<AgentBadge task={task({ agent: orcaAgent({ status: "trabajando" }) })} />);
+    expect(screen.getByRole("button", { name: "Detener agente" })).toBeInTheDocument();
+  });
+
+  it("clic en 'Abrir en Orca' llama actions.openInOrca(task.id) y no se propaga", async () => {
+    const user = userEvent.setup();
+    const parentClick = vi.fn();
+    render(
+      <div onClick={parentClick}>
+        <AgentBadge task={task({ id: "t7", agent: orcaAgent({ status: "terminado" }) })} />
+      </div>,
+    );
+    await user.click(screen.getByRole("button", { name: "Abrir en Orca" }));
+    expect(openInOrca).toHaveBeenCalledTimes(1);
+    expect(openInOrca).toHaveBeenCalledWith("t7");
+    expect(parentClick).not.toHaveBeenCalled();
+  });
+
+  it("sin orca (agente viejo con sessionId) no muestra 'Abrir en Orca'", () => {
+    render(<AgentBadge task={task({ agent: agent({ status: "terminado" }) })} />);
+    expect(screen.queryByRole("button", { name: "Abrir en Orca" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Copiar comando" })).toBeInTheDocument();
+  });
+
+  it("en Board: 'Abrir en Orca' no abre la edición (onEdit)", async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    const orcaBoard: BoardState = {
+      statuses: [{ id: "s1", name: "Lunes", color: "#64748b" }],
+      tasks: [task({ id: "t8", title: "En Orca", agent: orcaAgent({ status: "trabajando" }) })],
+    };
+    render(<Board board={orcaBoard} onEdit={onEdit} onCreate={() => {}} />);
+    const button = screen.getByRole("button", { name: "Abrir en Orca" });
+    expect(screen.getByText("En Orca").closest("article")).toContainElement(button);
+    await user.click(button);
+    expect(openInOrca).toHaveBeenCalledWith("t8");
+    expect(onEdit).not.toHaveBeenCalled();
   });
 });
 

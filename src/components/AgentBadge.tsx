@@ -35,7 +35,9 @@ export function AgentBadge({ task }: { task: Task }) {
 
   const { status } = agent;
   const working = status === "trabajando";
-  const showResume = !working || task.phase?.phaseId === "aprobacion_final";
+  const orca = agent.orca;
+  const showResume = !orca && (!working || task.phase?.phaseId === "aprobacion_final");
+  const orcaName = agent.worktree.split("/").filter(Boolean).pop() ?? agent.worktree;
   const resume = `cd ${agent.worktree} && claude --resume ${agent.sessionId}`;
 
   return (
@@ -69,6 +71,23 @@ export function AgentBadge({ task }: { task: Task }) {
       )}
       {status === "fallo" && agent.error && (
         <span className="break-words opacity-90">{agent.error}</span>
+      )}
+      {orca && (
+        <div className="flex items-center justify-between gap-1.5">
+          <span className="min-w-0 truncate opacity-70" title={agent.worktree}>
+            En Orca: {orcaName}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              actions.openInOrca(task.id);
+            }}
+            className="shrink-0 rounded border border-current/30 bg-white px-1.5 py-0.5 font-medium hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:bg-transparent dark:hover:bg-white/10"
+          >
+            Abrir en Orca
+          </button>
+        </div>
       )}
       {showResume && (
         <div className="flex flex-col gap-0.5">
